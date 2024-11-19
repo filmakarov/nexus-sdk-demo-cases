@@ -74,8 +74,14 @@ async function useSmartSessions() {
 
     const bybitSessionPublicKey = bybitSessionOwner.address;
 
+    /*
+     Rules:
+        Define permitted values for the function arguments
+    */
     const rules = [
         {
+          // sets the rule for the receiver address
+          // in this case, the receiver address should equal to the account address
           offsetIndex: 0,  // 'to' address parameter
           condition: ParamCondition.EQUAL,
           isLimited: false,
@@ -86,18 +92,19 @@ async function useSmartSessions() {
           }
         },
         {
-            // Limit transaction value
-            condition: ParamCondition.LESS_THAN,
-            offsetIndex: 1,
+            // Limit USD amount per transaction and per session
+            condition: ParamCondition.LESS_THAN_OR_EQUAL,
+            offsetIndex: 1, // value is the second argument of the transfer function
             isLimited: true,
-            ref: 100 * 10**6, //per transaction
+            ref: 100 * 10**6, //not more than 100 USD per transaction
             usage: {
-              limit: BigInt(10000 * 10**6), //per session)
+              limit: BigInt(10000 * 10**6), //not more than 10,000 USD per session
               used: BigInt(0)
             }
         }
       ];
- 
+      
+    // create the session
     const sessionRequestedInfo: CreateSessionDataParams[] = [
         {
             sessionPublicKey: bybitSessionPublicKey,
@@ -145,7 +152,6 @@ async function useSmartSessions() {
     };
 
     // USE THE SESSION
-
     console.log("Sending userOp that uses the session enabled before");
 
     const smartSessionNexusClient = await createNexusSessionClient({
@@ -168,8 +174,9 @@ async function useSmartSessions() {
 
     const usePermissionUserOpHash = await useSmartSessionNexusClient.usePermission({
         calls: [
-            {
-                to: tokenAddress, // Replace with your target contract address
+            {   
+                // transfer USD , signed by the session key
+                to: tokenAddress,
                 value: 0n,
                 data: encodeFunctionData({
                     abi: erc20Abi,
@@ -192,6 +199,7 @@ async function useSmartSessions() {
         args: [account.address],
     })
 
+    // was usd amount transferred?
     console.log("difference ", accountBalanceAfter - accountBalanceBefore)
 
 }
